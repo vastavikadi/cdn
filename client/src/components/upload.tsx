@@ -13,8 +13,8 @@ export default function UploadPage() {
 
     if (result.success) {
       setStatus("Upload complete!");
-      if (result.url) {
-        setUploadedUrl(result.url);
+      if (result.asset.filename) {
+        setUploadedUrl(result.asset.filename);
       }
     } else {
       setStatus(`Error: ${result.error}`);
@@ -39,7 +39,7 @@ export default function UploadPage() {
         </div>
       </form>
 
-      {uploadedUrl && <p className="font-mono">Uploaded URL: {uploadedUrl}</p>}
+      {uploadedUrl && <p className="font-mono">Uploaded filename: {uploadedUrl}</p>}
     </div>
   );
 }

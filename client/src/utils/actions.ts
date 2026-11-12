@@ -1,9 +1,18 @@
 // "use server";
 
+import { Asset } from "@/types";
+
 // import { writeFile, mkdir } from "fs/promises";
 // import path from "path";
 // import crypto from "crypto";
 // import getFileCategory from "./fileCategory";
+
+interface Response {
+  success: boolean;
+  message: string;
+  asset: Asset;
+  error?: Error;
+}
 
 export async function uploadFile(formData: FormData) {
   const file = formData.get("file") as File;
@@ -11,6 +20,8 @@ export async function uploadFile(formData: FormData) {
   if (!file) {
     return {
       success: false,
+      message: "No file provided",
+      asset: {} as Asset,
       error: "No file provided",
     };
   }
@@ -30,6 +41,8 @@ export async function uploadFile(formData: FormData) {
 
   if (!allowedTypes.includes(file.type)) {
     return {
+      message: "Invalid file type",
+      asset: {} as Asset,
       success: false,
       error: "Invalid file type",
     };
@@ -39,6 +52,8 @@ export async function uploadFile(formData: FormData) {
   const maxSize = 2 * 1024 * 1024;
   if (file.size > maxSize) {
     return {
+      message: "File too large (max 2MB)",
+      asset: {} as Asset,
       success: false,
       error: "File too large (max 2MB)",
     };
@@ -69,7 +84,7 @@ export async function uploadFile(formData: FormData) {
       body: formData,
     });
 
-    const result = await response.json();
+    const result: Response = await response.json();
 
     // return {
     //   success: true,
@@ -77,12 +92,12 @@ export async function uploadFile(formData: FormData) {
     //   filename: uniqueName,
     //   size: file.size,
     // };
-    console.log("Repsonse from upload api:", result);
     return result;
   } catch (error) {
-    console.error("Upload error:", error);
     return {
       success: false,
+      message: "Upload failed",
+      asset: {} as Asset,
       error: "Upload failed",
     };
   }

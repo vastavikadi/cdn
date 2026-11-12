@@ -1,0 +1,7 @@
+{
+    "id": "edge-india",
+    "region": "India",
+    "port": "8081",
+    "origin_url": "http://localhost:8080",
+    "cache_dir": "./edge/cache/india"
+}

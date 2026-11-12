@@ -1,0 +1,7 @@
+{
+    "id": "edge-europe",
+    "region": "Europe",
+    "port": "8082",
+    "origin_url": "http://localhost:8080",
+    "cache_dir": "./edge/cache/europe"
+}
