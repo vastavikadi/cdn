@@ -32,6 +32,8 @@ func main() {
 		log.Fatalf("Failed to initialize metadata: %v", err)
 	}
 
+	invalidator := NewEdgeInvalidator("cdn-local-invalidation-secret-change-me", "http://localhost:8081", "http://localhost:8082")
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /api/assets/upload", uploadHandler(store, cfg.assetsRoot))
@@ -40,7 +42,7 @@ func main() {
 
 	mux.HandleFunc("GET /api/assets/{id}", getAssetByID(store))
 
-	mux.HandleFunc("DELETE /api/assets/{id}", deleteAssetByID(store, cfg.assetsRoot))
+	mux.HandleFunc("DELETE /api/assets/{id}", deleteAssetByID(store, cfg.assetsRoot, invalidator))
 
 	mux.HandleFunc(
 		"GET /api/assets/{id}/content",

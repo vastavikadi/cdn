@@ -9,11 +9,12 @@ import (
 )
 
 type EdgeConfig struct {
-	ID        string `json:"id"`
-	Region    string `json:"region"`
-	Port      string `json:"port"`
-	OriginURL string `json:"origin_url"`
-	CacheDir  string `json:"cache_dir"`
+	ID              string `json:"id"`
+	Region          string `json:"region"`
+	Port            string `json:"port"`
+	OriginURL       string `json:"origin_url"`
+	CacheDir        string `json:"cache_dir"`
+	InvalidateToken string `json:"invalidate_token"`
 }
 
 func LoadConfig(path string) (*EdgeConfig, error) {
@@ -28,7 +29,7 @@ func LoadConfig(path string) (*EdgeConfig, error) {
 		return nil, err
 	}
 
-	if cfg.ID == "" || cfg.Region == "" || cfg.Port == "" || cfg.OriginURL == "" || cfg.CacheDir == "" {
+	if cfg.ID == "" || cfg.Region == "" || cfg.Port == "" || cfg.OriginURL == "" || cfg.CacheDir == "" || cfg.InvalidateToken == "" {
 		return nil, errors.New("missing required edge configuration")
 	}
 

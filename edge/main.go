@@ -26,6 +26,9 @@ func main() {
 	mux.HandleFunc("GET /assets/{id}", edge.ServeAsset)
 	mux.HandleFunc("GET /health", edge.HealthHandler)
 
+	// For Origin-to-Edge communication
+	mux.HandleFunc("POST /internal/cache/{id}/invalidate", edge.InvalidateHandler)
+
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
 		Handler: edgeCORS(mux),

@@ -3,5 +3,6 @@
     "region": "India",
     "port": "8081",
     "origin_url": "http://localhost:8080",
-    "cache_dir": "./edge/cache/india"
+    "cache_dir": "./edge/cache/india",
+    "invalidate_token": "cdn-local-invalidation-secret-change-me"
 }

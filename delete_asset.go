@@ -2,13 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-func deleteAssetByID(store *MetadataStore, assetsRoot string) http.HandlerFunc {
+func deleteAssetByID(store *MetadataStore, assetsRoot string, invalidator *EdgeInvalidator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 
@@ -33,6 +34,13 @@ func deleteAssetByID(store *MetadataStore, assetsRoot string) http.HandlerFunc {
 		if err := store.Delete(id); err != nil {
 			http.Error(w, "Failed to delete asset metadata", http.StatusInternalServerError)
 			return
+		}
+
+		// Notify all edge servers that this asset has been deleted
+		failures := invalidator.Invalidate(id)
+
+		for _, err := range failures {
+			log.Printf("Cache invalidation warning: %v", err)
 		}
 
 		w.Header().Set("Content-Type", "application/json")

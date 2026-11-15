@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/subtle"
 	"fmt"
 	"net/http"
 	"os"
@@ -134,4 +135,27 @@ func (e *EdgeServer) HealthHandler(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintf(w, `{"status":"ok","edge_id":%q,"region":%q,"port":%q}`, e.config.ID, e.config.Region, e.config.Port)
 
+}
+
+func (e *EdgeServer) InvalidateHandler(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+
+	if !validAssetID(id) {
+		http.Error(w, "Invalid asset ID", http.StatusBadRequest)
+		return
+	}
+
+	token := r.Header.Get("X-Edge-Token")
+
+	if subtle.ConstantTimeCompare([]byte(token), []byte(e.config.InvalidateToken)) != 1 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := e.cache.Delete(id); err != nil {
+		http.Error(w, "Cache invalidation failed", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
