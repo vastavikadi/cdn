@@ -28,7 +28,8 @@ export async function uploadFile(formData: FormData) {
 
   // Validate file type
   const allowedTypes = [
-    "images/jpeg",
+    "image/jpeg",
+    "image/jpg",
     "image/png",
     "image/gif",
     "image/webp",
