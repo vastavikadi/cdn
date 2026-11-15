@@ -459,3 +459,36 @@ func (c *CacheManager) evict() error {
 
 	return nil
 }
+
+func (c *CacheManager) Stats() (int, int64, error) {
+	files, err := os.ReadDir(c.dir)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	var assetCount int
+	var totalBytes int64
+
+	for _, file := range files {
+		if file.IsDir() || !strings.HasSuffix(file.Name(), ".json") {
+			continue
+		}
+
+		id := strings.TrimSuffix(file.Name(), ".json")
+		if !validAssetID(id) {
+			continue
+		}
+
+		bodyPath, _ := c.paths(id)
+
+		info, err := os.Stat(bodyPath)
+		if err != nil || !info.Mode().IsRegular() {
+			continue
+		}
+
+		assetCount++
+		totalBytes += info.Size()
+	}
+
+	return assetCount, totalBytes, nil
+}

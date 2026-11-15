@@ -2,11 +2,13 @@ package main
 
 import (
 	"crypto/subtle"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -14,6 +16,10 @@ type EdgeServer struct {
 	config *EdgeConfig
 	cache  *CacheManager
 	client *http.Client
+
+	statsMu     sync.RWMutex
+	cacheHits   uint64
+	cacheMisses uint64
 }
 
 func NewEdgeServer(cfg *EdgeConfig) (*EdgeServer, error) {
@@ -56,11 +62,18 @@ func (e *EdgeServer) ServeAsset(w http.ResponseWriter, r *http.Request) {
 	// Check local cache
 	metadata, cachePath, err := e.cache.Get(id)
 	if err == nil {
+		e.statsMu.Lock()
+		e.cacheHits++
+		e.statsMu.Unlock()
+
 		e.serveCachedAsset(w, r, metadata, cachePath, "HIT")
 		return
 	}
 
 	// Cache miss: request original asset from origin.
+	e.statsMu.Lock()
+	e.cacheMisses++
+	e.statsMu.Unlock()
 	originURL := fmt.Sprintf("%s/api/assets/%s/content", e.config.OriginURL, id)
 
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, originURL, nil)
@@ -170,4 +183,37 @@ func (e *EdgeServer) InvalidateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (e *EdgeServer) StatsHandler(w http.ResponseWriter, r *http.Request) {
+	cachedAssets, cacheSize, err := e.cache.Stats()
+	if err != nil {
+		http.Error(w, "Unable to read cache statistics",
+			http.StatusInternalServerError)
+		return
+	}
+
+	e.statsMu.Lock()
+	hits := e.cacheHits
+	misses := e.cacheMisses
+	e.statsMu.Unlock()
+
+	stats := struct {
+		EdgeID         string `json:"edge_id"`
+		Region         string `json:"region"`
+		CacheHits      uint64 `json:"cache_hits"`
+		CacheMisses    uint64 `json:"cache_misses"`
+		CachedAssets   int    `json:"cached_assets"`
+		CacheSizeBytes int64  `json:"cache_size_bytes"`
+	}{
+		EdgeID:         e.config.ID,
+		Region:         e.config.Region,
+		CacheHits:      hits,
+		CacheMisses:    misses,
+		CachedAssets:   cachedAssets,
+		CacheSizeBytes: cacheSize,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(stats)
 }

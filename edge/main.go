@@ -25,6 +25,7 @@ func main() {
 
 	mux.HandleFunc("GET /assets/{id}", edge.ServeAsset)
 	mux.HandleFunc("GET /health", edge.HealthHandler)
+	mux.HandleFunc("GET /stats", edge.StatsHandler)
 
 	// For Origin-to-Edge communication
 	mux.HandleFunc("POST /internal/cache/{id}/invalidate", edge.InvalidateHandler)
