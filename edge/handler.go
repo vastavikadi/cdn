@@ -17,7 +17,19 @@ type EdgeServer struct {
 }
 
 func NewEdgeServer(cfg *EdgeConfig) (*EdgeServer, error) {
-	cache, err := NewCacheManager(cfg.CacheDir)
+	ttl, err := time.ParseDuration(cfg.CacheTTL)
+	if err != nil {
+		return nil, err
+	}
+
+	cache, err := NewCacheManager(
+		cfg.CacheDir,
+		ttl,
+		cfg.MaxCacheBytes,
+	)
+	if err != nil {
+		return nil, err
+	}
 	if err != nil {
 		return nil, err
 	}

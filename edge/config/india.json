@@ -4,5 +4,7 @@
     "port": "8081",
     "origin_url": "http://localhost:8080",
     "cache_dir": "./edge/cache/india",
-    "invalidate_token": "cdn-local-invalidation-secret-change-me"
+    "invalidate_token": "cdn-local-invalidation-secret-change-me",
+    "cache_ttl": "24h",
+    "max_cache_bytes": 524288000
 }

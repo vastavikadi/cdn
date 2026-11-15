@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "id": "asset_3faf744ad4f72c6586f8cfaa",
+    "filename": "preview.png",
+    "storage_name": "image/asset_3faf744ad4f72c6586f8cfaa.png",
+    "content_type": "image/png",
+    "size": 432742,
+    "version": 1,
+    "checksum": "b2f6da08268186f75fc4029bb246de310bc4364fa5601e6a2b52e2b23207ee69",
+    "uploaded_at": "2026-11-15T11:05:08.7227217Z"
+  }
+]
