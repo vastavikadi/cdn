@@ -88,6 +88,7 @@ func serveOriginAsset(store *MetadataStore, assetsRoot string) http.HandlerFunc 
 
 		w.Header().Set("Content-Type", asset.ContentType)
 		w.Header().Set("X-Asset-ID", asset.ID)
+		w.Header().Set("X-Asset-Filename", asset.Filename)
 		w.Header().Set("X-Asset-Version", strconv.Itoa(asset.Version))
 
 		http.ServeContent(

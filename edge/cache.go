@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 type CachedAsset struct {
@@ -17,7 +18,9 @@ type CachedAsset struct {
 }
 
 type CacheManager struct { // main goal of using struct is to keep things in memory and globally accessible
-	dir string
+	dir     string
+	locksMu sync.Mutex
+	locks   map[string]*sync.Mutex
 }
 
 func NewCacheManager(dir string) (*CacheManager, error) {
@@ -26,7 +29,8 @@ func NewCacheManager(dir string) (*CacheManager, error) {
 	}
 
 	return &CacheManager{
-		dir: dir,
+		dir:   dir,
+		locks: make(map[string]*sync.Mutex),
 	}, nil
 }
 
@@ -84,23 +88,87 @@ func (c *CacheManager) Get(id string) (*CachedAsset, string, error) {
 	return &metadata, bodyPath, nil
 }
 
+// func (c *CacheManager) Put(
+// 	id string,
+// 	metadata CachedAsset,
+// 	sourcePath string,
+// ) error {
+// 	if !validAssetID(id) || metadata.ID != id {
+// 		return errors.New("invalid asset ID")
+// 	}
+
+// 	bodyPath, metaPath := c.paths(id)
+
+// 	// Copy downloaded content to a temporary file.
+// 	source, err := os.Open(sourcePath)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer source.Close()
+
+// 	bodyTemp, err := os.CreateTemp(c.dir, id+"-*.tmp")
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	bodyTempPath := bodyTemp.Name()
+// 	defer os.Remove(bodyTempPath)
+
+// 	if _, err := io.Copy(bodyTemp, source); err != nil {
+// 		bodyTemp.Close()
+// 		return err
+// 	}
+
+// 	if err := bodyTemp.Sync(); err != nil {
+// 		bodyTemp.Close()
+// 		return err
+// 	}
+
+// 	if err := bodyTemp.Close(); err != nil {
+// 		return err
+// 	}
+
+// 	// Prepare metadata separately.
+// 	metaTemp, err := os.CreateTemp(c.dir, id+"-meta-*.tmp")
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	metaTempPath := metaTemp.Name()
+// 	defer os.Remove(metaTempPath)
+
+// 	if err := json.NewEncoder(metaTemp).Encode(metadata); err != nil {
+// 		metaTemp.Close()
+// 		return err
+// 	}
+
+// 	if err := metaTemp.Sync(); err != nil {
+// 		metaTemp.Close()
+// 		return err
+// 	}
+
+// 	if err := metaTemp.Close(); err != nil {
+// 		return err
+// 	}
+
+// 	// Publish the body first and metadata last.
+// 	if err := os.Rename(bodyTempPath, bodyPath); err != nil {
+// 		return err
+// 	}
+
+// 	return os.Rename(metaTempPath, metaPath)
+// }
+
 func (c *CacheManager) Put(
 	id string,
 	metadata CachedAsset,
-	sourcePath string,
+	body io.Reader,
 ) error {
 	if !validAssetID(id) || metadata.ID != id {
 		return errors.New("invalid asset ID")
 	}
 
 	bodyPath, metaPath := c.paths(id)
-
-	// Copy downloaded content to a temporary file.
-	source, err := os.Open(sourcePath)
-	if err != nil {
-		return err
-	}
-	defer source.Close()
 
 	bodyTemp, err := os.CreateTemp(c.dir, id+"-*.tmp")
 	if err != nil {
@@ -110,7 +178,7 @@ func (c *CacheManager) Put(
 	bodyTempPath := bodyTemp.Name()
 	defer os.Remove(bodyTempPath)
 
-	if _, err := io.Copy(bodyTemp, source); err != nil {
+	if _, err := io.Copy(bodyTemp, body); err != nil {
 		bodyTemp.Close()
 		return err
 	}
@@ -124,7 +192,6 @@ func (c *CacheManager) Put(
 		return err
 	}
 
-	// Prepare metadata separately.
 	metaTemp, err := os.CreateTemp(c.dir, id+"-meta-*.tmp")
 	if err != nil {
 		return err
@@ -147,10 +214,56 @@ func (c *CacheManager) Put(
 		return err
 	}
 
-	// Publish the body first and metadata last.
+	// Remove stale entries, if any
+	_ = os.Remove(metaPath)
+	_ = os.Remove(bodyPath)
+
 	if err := os.Rename(bodyTempPath, bodyPath); err != nil {
 		return err
 	}
 
 	return os.Rename(metaTempPath, metaPath)
+}
+
+// Delete removes an asset from the edge cache.
+func (c *CacheManager) Delete(id string) error {
+	if !validAssetID(id) {
+		return errors.New("invalid asset ID")
+	}
+
+	unlock := c.LockAsset(id)
+	defer unlock()
+
+	bodyPath, metaPath := c.paths(id)
+
+	// Remove metadata first so the asset is no longer considered cached.
+	if err := os.Remove(metaPath); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	// Remove the actual cached file.
+	if err := os.Remove(bodyPath); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	return nil
+}
+
+// Suppose five users request the same uncached asset simultaneously.
+// Without coordination, the edge could make five identical origin requests.
+// To prevent this, we will lock the asset beforehand
+func (c *CacheManager) LockAsset(id string) func() {
+	c.locksMu.Lock()
+
+	lock, exists := c.locks[id]
+	if !exists {
+		lock = &sync.Mutex{}
+		c.locks[id] = lock
+	}
+
+	c.locksMu.Unlock()
+
+	lock.Lock()
+
+	return lock.Unlock
 }
