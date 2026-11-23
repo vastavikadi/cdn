@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test-and-build:
+    name: Test & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Verify Formatting
+        run: |
+          diffs=$(gofmt -s -l .)
+          if [ -n "$diffs" ]; then
+            echo "The following files are not properly formatted:"
+            echo "$diffs"
+            exit 1
+          fi
+
+      - name: Run Unit Tests with Race Detector
+        run: |
+          go test -v -race -coverprofile=coverage.out . ./edge
+
+      - name: Run Edge Cache Benchmarks
+        run: |
+          go test -run='^$' -bench='.' -benchmem ./edge
+
+      - name: Build Binaries
+        run: |
+          go build -v -o bin/origin .
+          go build -v -o bin/edge ./edge
+
+      - name: Verify Docker Compose Build
+        run: |
+          docker compose build
