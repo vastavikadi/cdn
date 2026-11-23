@@ -4,7 +4,10 @@ import (
 	// "fmt"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
+
+	"github.com/joho/godotenv"
 )
 
 type apiConfig struct {
@@ -13,11 +16,25 @@ type apiConfig struct {
 }
 
 func main() {
-	// fmt.Println("Hey World!")
-	const port = "8080"
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	port := os.Getenv("PORT")
+	// const port = "8080"
+
+	assetsRoot := os.Getenv("ASSETS_ROOT")
+	// fmt.Println(assetsRoot)
+
+	invalidationToken := os.Getenv("EDGE_INVALIDATION_TOKEN")
+
+	//edge urls
+	edge_1 := os.Getenv("EDGE_URL_1")
+	edge_2 := os.Getenv("EDGE_URL_2")
+	// fmt.Println(edge_1,edge_2, assetsRoot, port)
 
 	cfg := apiConfig{
-		assetsRoot: "C:/projects/cdn/assets",
+		assetsRoot: assetsRoot,
 		port:       port,
 	}
 
@@ -32,7 +49,7 @@ func main() {
 		log.Fatalf("Failed to initialize metadata: %v", err)
 	}
 
-	invalidator := NewEdgeInvalidator("cdn-local-invalidation-secret-change-me", "http://localhost:8081", "http://localhost:8082")
+	invalidator := NewEdgeInvalidator(invalidationToken, edge_1, edge_2)
 
 	mux := http.NewServeMux()
 

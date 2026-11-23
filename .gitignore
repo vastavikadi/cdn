@@ -46,3 +46,5 @@ package-lock.json
 
 cache
 assets.json
+
+*.exe
