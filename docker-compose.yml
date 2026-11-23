@@ -1,0 +1,80 @@
+services:
+  origin:
+    build:
+      context: .
+      target: origin
+    container_name: cdn-origin
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - ASSETS_ROOT=/app/assets
+      - EDGE_INVALIDATION_TOKEN=cdn-local-invalidation-secret-change-me
+      - EDGE_URL_1=http://edge-india:8081
+      - EDGE_URL_2=http://edge-europe:8082
+    volumes:
+      - origin_assets:/app/assets
+      - origin_data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - cdn-net
+
+  edge-india:
+    build:
+      context: .
+      target: edge
+    container_name: cdn-edge-india
+    command: ["--config", "/app/edge/config/india.json"]
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+      - EDGE_ID=edge-india
+      - EDGE_REGION=India
+      - ORIGIN_URL=http://origin:8080
+      - CACHE_DIR=/app/edge/cache/india
+      - EDGE_INVALIDATE_TOKEN=cdn-local-invalidation-secret-change-me
+    volumes:
+      - edge_india_cache:/app/edge/cache/india
+    depends_on:
+      origin:
+        condition: service_healthy
+    networks:
+      - cdn-net
+
+  edge-europe:
+    build:
+      context: .
+      target: edge
+    container_name: cdn-edge-europe
+    command: ["--config", "/app/edge/config/europe.json"]
+    ports:
+      - "8082:8082"
+    environment:
+      - PORT=8082
+      - EDGE_ID=edge-europe
+      - EDGE_REGION=Europe
+      - ORIGIN_URL=http://origin:8080
+      - CACHE_DIR=/app/edge/cache/europe
+      - EDGE_INVALIDATE_TOKEN=cdn-local-invalidation-secret-change-me
+    volumes:
+      - edge_europe_cache:/app/edge/cache/europe
+    depends_on:
+      origin:
+        condition: service_healthy
+    networks:
+      - cdn-net
+
+volumes:
+  origin_assets:
+  origin_data:
+  edge_india_cache:
+  edge_europe_cache:
+
+networks:
+  cdn-net:
+    driver: bridge
