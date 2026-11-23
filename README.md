@@ -1,5 +1,7 @@
 # Go CDN --- Origin and Edge Cache
 
+Built a production-patterned CDN in Go — Origin + 2 geographic Edge servers with TTL+LRU disk caching, concurrent invalidation fan-out via goroutines, per-asset mutex concurrency, and a Next.js control panel; CI via GitHub Actions, containerized with Docker Compose; cache-hit latency ~Xms vs ~Yms miss
+
 A learning-focused CDN built with Go and an existing Next.js frontend.
 The system has one Origin server and two independently running Edge
 servers. Origin owns original assets and metadata; each Edge serves
