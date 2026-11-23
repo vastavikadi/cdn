@@ -32,6 +32,30 @@ func LoadConfig(path string) (*EdgeConfig, error) {
 		return nil, err
 	}
 
+	// Allow environment variables to override config values for Docker and 12-factor setups
+	if envID := os.Getenv("EDGE_ID"); envID != "" {
+		cfg.ID = envID
+	}
+	if envRegion := os.Getenv("EDGE_REGION"); envRegion != "" {
+		cfg.Region = envRegion
+	}
+	if envPort := os.Getenv("PORT"); envPort != "" {
+		cfg.Port = envPort
+	} else if envPort := os.Getenv("EDGE_PORT"); envPort != "" {
+		cfg.Port = envPort
+	}
+	if envOrigin := os.Getenv("ORIGIN_URL"); envOrigin != "" {
+		cfg.OriginURL = envOrigin
+	}
+	if envCacheDir := os.Getenv("CACHE_DIR"); envCacheDir != "" {
+		cfg.CacheDir = envCacheDir
+	} else if envCacheDir := os.Getenv("EDGE_CACHE_DIR"); envCacheDir != "" {
+		cfg.CacheDir = envCacheDir
+	}
+	if envToken := os.Getenv("EDGE_INVALIDATE_TOKEN"); envToken != "" {
+		cfg.InvalidateToken = envToken
+	}
+
 	if cfg.ID == "" || cfg.Region == "" || cfg.Port == "" || cfg.OriginURL == "" || cfg.CacheDir == "" || cfg.InvalidateToken == "" {
 		return nil, errors.New("missing required edge configuration")
 	}

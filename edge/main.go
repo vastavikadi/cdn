@@ -2,23 +2,31 @@ package main
 
 import (
 	"flag"
-	"log"
+	"log/slog"
 	"net/http"
+	"os"
 )
 
 func main() {
-	configPath := flag.String("config", "./edge/config/india.json", "Path to edge configuration")
+	// Configure default structured JSON logger
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+	slog.SetDefault(logger)
 
+	configPath := flag.String("config", "./edge/config/india.json", "Path to edge configuration")
 	flag.Parse()
 
 	cfg, err := LoadConfig(*configPath)
 	if err != nil {
-		log.Fatalf("Configuration error: %v", err)
+		slog.Error("Configuration error", "error", err, "path", *configPath)
+		os.Exit(1)
 	}
 
 	edge, err := NewEdgeServer(cfg)
 	if err != nil {
-		log.Fatalf("Edge initialization failed: %v", err)
+		slog.Error("Edge initialization failed", "error", err)
+		os.Exit(1)
 	}
 
 	mux := http.NewServeMux()
@@ -26,8 +34,9 @@ func main() {
 	mux.HandleFunc("GET /assets/{id}", edge.ServeAsset)
 	mux.HandleFunc("GET /health", edge.HealthHandler)
 	mux.HandleFunc("GET /stats", edge.StatsHandler)
+	mux.HandleFunc("GET /metrics", edge.MetricsHandler)
 
-	// For Origin-to-Edge communication
+	// Origin-to-Edge cache invalidation
 	mux.HandleFunc("POST /internal/cache/{id}/invalidate", edge.InvalidateHandler)
 
 	server := &http.Server{
@@ -35,14 +44,19 @@ func main() {
 		Handler: edgeCORS(mux),
 	}
 
-	log.Printf(
-		"Starting %s (%s) on port %s",
-		cfg.ID,
-		cfg.Region,
-		cfg.Port,
+	slog.Info("Starting CDN Edge server",
+		"id", cfg.ID,
+		"region", cfg.Region,
+		"port", cfg.Port,
+		"origin_url", cfg.OriginURL,
+		"cache_dir", cfg.CacheDir,
+		"max_cache_bytes", cfg.MaxCacheBytes,
 	)
 
-	log.Fatal(server.ListenAndServe())
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		slog.Error("Server stopped unexpectedly", "error", err)
+		os.Exit(1)
+	}
 }
 
 func edgeCORS(next http.Handler) http.Handler {
