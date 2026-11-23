@@ -8,9 +8,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io"
-
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -170,12 +169,12 @@ func uploadHandler(store *MetadataStore, assetsRoot string) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"success": true,
 			"message": "Asset uploaded successfully",
 			"asset":   asset,
 		})
 
-		fmt.Printf("Uploaded asset: %s\n", asset.ID)
+		slog.Info("Asset uploaded successfully", "asset_id", asset.ID, "size_bytes", asset.Size, "content_type", asset.ContentType)
 	}
 }
